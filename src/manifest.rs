@@ -22,6 +22,8 @@ pub struct PipelineHeader {
     #[serde(default = "default_state_dir")]
     pub state_dir: String,
     #[serde(default)]
+    pub workdir: Option<String>,
+    #[serde(default)]
     pub default_retries: u32,
     #[serde(default = "default_retry_delay_ms")]
     pub default_retry_delay_ms: u64,

@@ -79,6 +79,18 @@ pub async fn execute_pipeline(
     );
     let wall_start = Instant::now();
 
+    let effective_base_dir = match &manifest.pipeline.workdir {
+        Some(w) => {
+            let p = PathBuf::from(w);
+            if p.is_absolute() {
+                p
+            } else {
+                opts.base_dir.join(p)
+            }
+        }
+        None => opts.base_dir.clone(),
+    };
+
     let waves = manifest.compute_waves(&opts.subset)?;
     let total_steps: usize = waves.iter().map(Vec::len).sum();
 
@@ -205,7 +217,7 @@ pub async fn execute_pipeline(
             running.insert(id.clone());
             let step = step_map[&id].clone();
             let sem = Arc::clone(&semaphore);
-            let base_dir = opts.base_dir.clone();
+            let base_dir = effective_base_dir.clone();
             let pipeline_env = manifest.pipeline.env.clone();
             let default_retries = manifest.pipeline.default_retries;
             let default_delay = manifest.pipeline.default_retry_delay_ms;
@@ -274,7 +286,7 @@ pub async fn execute_pipeline(
         let dir = opts
             .run_dir
             .clone()
-            .unwrap_or_else(|| opts.base_dir.join(&manifest.pipeline.state_dir));
+            .unwrap_or_else(|| effective_base_dir.join(&manifest.pipeline.state_dir));
         let path = save_audit_log(&dir, &report)?;
         report.audit_log_path = Some(path.display().to_string());
     }
