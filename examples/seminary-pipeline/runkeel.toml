@@ -1,0 +1,84 @@
+# Example nightly Seminary Student Retention DAG orchestrating all 4 Keel tools!
+[pipeline]
+name = "seminary-student-retention"
+description = "Nightly Populi SIS + Canvas LMS extract, validate, Postgres load, and SQL risk-model verification."
+max_parallel = 4
+state_dir = ".keel/runs"
+default_retries = 1
+
+# --- Wave 1: Parallel API extraction (Populi + Canvas) + static SQL contract check ---
+[[steps]]
+id = "fetch_populi"
+kind = "fetch"
+config = "sources/populi.toml"
+stream = "students"
+state = ".keel/state.json"
+output = "staging/populi_students.jsonl"
+
+[[steps]]
+id = "fetch_canvas"
+kind = "fetch"
+config = "sources/canvas.toml"
+stream = "enrollments"
+state = ".keel/state.json"
+output = "staging/canvas_enrollments.jsonl"
+
+[[steps]]
+id = "verify_sql"
+kind = "sql_check"
+paths = ["sql/", "migrations/"]
+schemas = ["contracts/"]
+fail_on = "error"
+
+# --- Wave 2: Contract validation & clean/quarantine splitting ---
+[[steps]]
+id = "validate_populi"
+kind = "validate"
+depends_on = ["fetch_populi"]
+contract = "contracts/populi_students.datacontract.yaml"
+data = "staging/populi_students.jsonl"
+clean = "staging/populi_clean.jsonl"
+quarantine = "staging/populi_bad.jsonl"
+max_quarantine_rate = 0.05
+
+[[steps]]
+id = "validate_canvas"
+kind = "validate"
+depends_on = ["fetch_populi", "fetch_canvas"]
+contract = "contracts/canvas_enrollments.toml"
+data = "staging/canvas_enrollments.jsonl"
+clean = "staging/canvas_clean.jsonl"
+quarantine = "staging/canvas_bad.jsonl"
+max_quarantine_rate = 0.05
+
+[steps.refs]
+populi_students = "staging/populi_students.jsonl"
+
+# --- Wave 3: Atomic Postgres COPY + ON CONFLICT upserts ---
+[[steps]]
+id = "load_populi"
+kind = "load"
+depends_on = ["validate_populi"]
+input = "staging/populi_clean.jsonl"
+target = "pg://staging.populi_students"
+contract = "contracts/populi_students.datacontract.yaml"
+flatten = true
+auto_create = true
+evolve = true
+
+[[steps]]
+id = "load_canvas"
+kind = "load"
+depends_on = ["validate_canvas", "load_populi"]
+input = "staging/canvas_clean.jsonl"
+target = "pg://staging.canvas_enrollments"
+contract = "contracts/canvas_enrollments.toml"
+auto_create = true
+evolve = true
+
+# --- Wave 4: Refresh downstream at-risk student outreach views ---
+[[steps]]
+id = "refresh_risk_views"
+kind = "shell"
+depends_on = ["load_populi", "load_canvas", "verify_sql"]
+cmd = "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f sql/refresh_at_risk_students.sql"

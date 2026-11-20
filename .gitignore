@@ -1,0 +1,7 @@
+/target
+/dist
+.keel/
+*.swp
+*.swo
+.DS_Store
+.env
