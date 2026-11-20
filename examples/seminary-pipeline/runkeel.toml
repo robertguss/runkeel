@@ -17,11 +17,13 @@ output = "staging/populi_students.jsonl"
 
 [[steps]]
 id = "fetch_canvas"
-kind = "fetch"
-config = "sources/canvas.toml"
-stream = "enrollments"
-state = ".keel/state.json"
-output = "staging/canvas_enrollments.jsonl"
+kind = "dap"
+action = "incremental"
+namespace = "canvas"
+table = "enrollments"
+state = ".keel/dap_state.json"
+output_dir = "staging"
+unpack = true
 
 [[steps]]
 id = "verify_sql"

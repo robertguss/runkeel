@@ -37,7 +37,9 @@ async fn run(cli: Cli, format: ResolvedFormat, use_color: bool) -> Result<i32> {
             let manifest = PipelineManifest::load(&manifest_path)?;
             let subset = manifest.select_subset(&only, from.as_deref())?;
             let base_dir = PipelineManifest::resolve_base_dir(&manifest_path);
-            let concurrency = max_parallel.unwrap_or(manifest.pipeline.max_parallel).max(1);
+            let concurrency = max_parallel
+                .unwrap_or(manifest.pipeline.max_parallel)
+                .max(1);
 
             let report = runner::execute_pipeline(
                 &manifest,

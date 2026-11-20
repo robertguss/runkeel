@@ -192,9 +192,9 @@ pub async fn execute_pipeline(
             .iter()
             .filter(|id| {
                 let step = &step_map[*id];
-                step.depends_on.iter().all(|dep| {
-                    !opts.subset.contains(dep) || completed.contains_key(dep)
-                })
+                step.depends_on
+                    .iter()
+                    .all(|dep| !opts.subset.contains(dep) || completed.contains_key(dep))
             })
             .cloned()
             .collect();
@@ -212,14 +212,7 @@ pub async fn execute_pipeline(
 
             join_set.spawn(async move {
                 let _permit = sem.acquire_owned().await.expect("semaphore open");
-                run_single_step(
-                    step,
-                    base_dir,
-                    pipeline_env,
-                    default_retries,
-                    default_delay,
-                )
-                .await
+                run_single_step(step, base_dir, pipeline_env, default_retries, default_delay).await
             });
         }
 
@@ -229,7 +222,8 @@ pub async fn execute_pipeline(
 
         // 3. Await next finished step
         if let Some(res) = join_set.join_next().await {
-            let outcome = res.map_err(|e| RunKeelError::General(format!("task join error: {e}")))?;
+            let outcome =
+                res.map_err(|e| RunKeelError::General(format!("task join error: {e}")))?;
             running.remove(&outcome.id);
             if outcome.status == StepStatus::Failed && !step_map[&outcome.id].continue_on_error {
                 any_hard_failure = true;

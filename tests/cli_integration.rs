@@ -39,7 +39,9 @@ fn plan_computes_parallel_waves_mermaid_and_catches_cycles() {
         .assert()
         .success()
         .stdout(predicate::str::contains("flowchart LR"))
-        .stdout(predicate::str::contains("load_canvas --> refresh_risk_views"));
+        .stdout(predicate::str::contains(
+            "load_canvas --> refresh_risk_views",
+        ));
 
     // 3. Cycle detection -> exit 2 + RK_CYCLE_DETECTED
     let dir = tempdir().unwrap();

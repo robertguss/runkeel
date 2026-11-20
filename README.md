@@ -4,6 +4,7 @@
 
 Unifies the complete **Keel Data Stack** without Airflow, Dagster, or fragile bash scripts:
 - **[`fetchkeel`](https://github.com/robertguss/fetchkeel)** — Extracts paginated REST APIs into JSONL
+- **[`dapkeel`](https://github.com/robertguss/dapkeel)** — Extracts & replicates Instructure Canvas Data 2 (DAP) snapshots, incremental CDC, and ODCS contracts
 - **[`datakeel`](https://github.com/robertguss/datakeel)** — Validates contracts, catches drift, splits clean vs. quarantined rows
 - **[`loadkeel`](https://github.com/robertguss/loadkeel)** — Flattens JSON & bulk-loads Postgres via `COPY` + atomic upserts
 - **[`sqlkeel`](https://github.com/robertguss/sqlkeel)** — Statically checks SQL semantic bugs, schema hallucinations, migrations & column lineage

@@ -45,6 +45,7 @@ fn default_retry_delay_ms() -> u64 {
 #[serde(rename_all = "snake_case")]
 pub enum StepKind {
     Fetch,
+    Dap,
     Validate,
     Diff,
     Load,
@@ -84,6 +85,22 @@ pub struct StepConfig {
     pub output_dir: Option<String>,
     pub state: Option<String>,
     pub max_pages: Option<usize>,
+
+    // --- dap (dapkeel) ---
+    pub action: Option<String>,
+    pub namespace: Option<String>,
+    pub table: Option<String>,
+    pub since: Option<String>,
+    pub until: Option<String>,
+    pub data_format: Option<String>,
+    pub to_contract: Option<String>,
+    pub target_schema: Option<String>,
+    #[serde(default)]
+    pub unpack: bool,
+    #[serde(default)]
+    pub decompress: bool,
+    #[serde(default)]
+    pub soft_delete: bool,
 
     // --- validate / diff (datakeel) ---
     pub contract: Option<String>,
@@ -229,11 +246,7 @@ impl PipelineManifest {
         self.steps.iter().map(|s| s.id.clone()).collect()
     }
 
-    pub fn select_subset(
-        &self,
-        only: &[String],
-        from: Option<&str>,
-    ) -> Result<IndexSet<String>> {
+    pub fn select_subset(&self, only: &[String], from: Option<&str>) -> Result<IndexSet<String>> {
         let all = self.all_step_ids();
         let available = || {
             self.steps
@@ -412,7 +425,11 @@ impl PipelineManifest {
             }
             for dep in &s.depends_on {
                 if subset.contains(dep) {
-                    out.push_str(&format!("    {} --> {}\n", mermaid_id(dep), mermaid_id(&s.id)));
+                    out.push_str(&format!(
+                        "    {} --> {}\n",
+                        mermaid_id(dep),
+                        mermaid_id(&s.id)
+                    ));
                 }
             }
         }
@@ -461,6 +478,51 @@ impl StepConfig {
                 }
                 a.extend(["--format".to_string(), "agent".to_string()]);
                 ("fetchkeel".to_string(), a)
+            }
+            StepKind::Dap => {
+                let action = self
+                    .action
+                    .clone()
+                    .unwrap_or_else(|| "incremental".to_string());
+                let mut a = vec![action.clone()];
+                if let Some(ref ns) = self.namespace {
+                    a.extend(["--namespace".to_string(), ns.clone()]);
+                }
+                if let Some(ref tbl) = self.table {
+                    a.extend(["--table".to_string(), tbl.clone()]);
+                }
+                if let Some(ref od) = self.output_dir {
+                    a.extend(["--output-directory".to_string(), od.clone()]);
+                }
+                if let Some(ref st) = self.state {
+                    a.extend(["--state".to_string(), st.clone()]);
+                }
+                if let Some(ref s) = self.since {
+                    a.extend(["--since".to_string(), s.clone()]);
+                }
+                if let Some(ref u) = self.until {
+                    a.extend(["--until".to_string(), u.clone()]);
+                }
+                if let Some(ref df) = self.data_format {
+                    a.extend(["--data-format".to_string(), df.clone()]);
+                }
+                if let Some(ref tc) = self.to_contract {
+                    a.extend(["--to-contract".to_string(), tc.clone()]);
+                }
+                if let Some(ref ts) = self.target_schema {
+                    a.extend(["--target-schema".to_string(), ts.clone()]);
+                }
+                if self.unpack {
+                    a.push("--unpack".to_string());
+                }
+                if self.decompress {
+                    a.push("--decompress".to_string());
+                }
+                if self.soft_delete {
+                    a.push("--soft-delete".to_string());
+                }
+                a.extend(["--format".to_string(), "agent".to_string()]);
+                ("dapkeel".to_string(), a)
             }
             StepKind::Validate => {
                 let mut a = vec![

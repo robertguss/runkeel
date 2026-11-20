@@ -181,11 +181,7 @@ pub fn emit_run_report(
     }
 }
 
-pub fn emit_plan_report(
-    report: &PlanReport,
-    format: ResolvedFormat,
-    color: bool,
-) -> Result<()> {
+pub fn emit_plan_report(report: &PlanReport, format: ResolvedFormat, color: bool) -> Result<()> {
     match format {
         ResolvedFormat::Human => {
             println!(
@@ -283,7 +279,10 @@ pub fn emit_skill_installed(
             } else {
                 "[INSTALLED]".to_string()
             };
-            println!("{badge} Agent skill written to {}", installed_path.display());
+            println!(
+                "{badge} Agent skill written to {}",
+                installed_path.display()
+            );
             Ok(())
         }
         ResolvedFormat::Agent | ResolvedFormat::Json => {
